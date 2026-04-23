@@ -83,6 +83,22 @@ export default function Home() {
             <div className="header" style={{ justifyContent: 'space-between' }}>
                 <h1>Système de Gestion des Présences</h1>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+                    <a
+                        href="/etudiants"
+                        style={{
+                            backgroundColor: 'rgba(255,255,255,0.2)',
+                            color: 'white',
+                            border: '1px solid rgba(255,255,255,0.4)',
+                            padding: '6px 14px',
+                            borderRadius: '6px',
+                            cursor: 'pointer',
+                            fontSize: '13px',
+                            textDecoration: 'none',
+                            fontWeight: '600'
+                        }}
+                    >
+                        👥 Gérer les étudiants
+                    </a>
                     <span style={{ fontSize: '14px' }}>
                         👤 {enseignant.prenom} {enseignant.nom}
                     </span>

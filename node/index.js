@@ -256,6 +256,89 @@ app.post('/login', (req, res) => {
     );
 });
 
+
+// =============================================
+//           GESTION DES ÉTUDIANTS
+// =============================================
+
+// GET /etudiants — Liste tous les étudiants avec leur classe
+app.get('/etudiants', (req, res) => {
+    db.query(
+        `SELECT e.id, e.empreinte_id, e.nom, e.prenom, e.id_classe, c.nom as classe_nom
+         FROM etudiants e
+         JOIN classes c ON e.id_classe = c.id
+         ORDER BY e.nom ASC`,
+        (err, result) => {
+            if (err) {
+                console.log('Erreur GET /etudiants:', err.message);
+                return res.json({ erreur: err.message });
+            }
+            res.json(result);
+        }
+    );
+});
+
+
+// POST /etudiants — Ajouter un étudiant (calcule automatiquement l'empreinte_id)
+app.post('/etudiants', (req, res) => {
+    const { nom, prenom, id_classe } = req.body;
+
+    if (!nom || !prenom || !id_classe) {
+        return res.json({ erreur: 'Champs nom, prenom et id_classe requis' });
+    }
+
+    // Calculer le prochain empreinte_id disponible
+    db.query(
+        'SELECT MAX(CAST(empreinte_id AS UNSIGNED)) as max_id FROM etudiants',
+        (err, result) => {
+            if (err) {
+                console.log('Erreur calcul empreinte_id:', err.message);
+                return res.json({ erreur: err.message });
+            }
+
+            const next_id = (result[0].max_id || 0) + 1;
+
+            db.query(
+                'INSERT INTO etudiants (empreinte_id, nom, prenom, id_classe) VALUES (?, ?, ?, ?)',
+                [next_id.toString(), nom, prenom, id_classe],
+                (err, insertResult) => {
+                    if (err) {
+                        console.log('Erreur INSERT étudiant:', err.message);
+                        return res.json({ erreur: err.message });
+                    }
+
+                    console.log(`Étudiant ajouté: ${prenom} ${nom} — ID capteur: ${next_id}`);
+                    res.json({
+                        success: true,
+                        id: insertResult.insertId,
+                        empreinte_id: next_id,
+                        message: `Étudiant enregistré. Enrôler l'empreinte N°${next_id} sur l'Arduino.`
+                    });
+                }
+            );
+        }
+    );
+});
+
+
+// DELETE /etudiants/:id — Supprimer un étudiant
+app.delete('/etudiants/:id', (req, res) => {
+    const { id } = req.params;
+
+    db.query('DELETE FROM etudiants WHERE id = ?', [id], (err, result) => {
+        if (err) {
+            console.log('Erreur DELETE étudiant:', err.message);
+            return res.json({ erreur: err.message });
+        }
+        if (result.affectedRows === 0) {
+            return res.json({ erreur: 'Étudiant non trouvé' });
+        }
+        console.log(`Étudiant ID ${id} supprimé`);
+        res.json({ success: true, message: 'Étudiant supprimé' });
+    });
+});
+
+
 app.listen(3000, () => {
     console.log('API démarrée sur port 3000');
 });

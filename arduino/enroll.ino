@@ -4,7 +4,7 @@
 
 Adafruit_Fingerprint finger = Adafruit_Fingerprint(&mySerial);
 
-uint8_t id = 1; // commence à 1, s'incrémente automatiquement
+uint8_t id = 0; // 0 = en attente de l'ID depuis le PC
 
 void setup() {
   Serial.begin(9600);
@@ -14,77 +14,97 @@ void setup() {
   finger.begin(57600);
 
   if (finger.verifyPassword()) {
-    Serial.println("Capteur trouvé !");
+    Serial.println("CAPTEUR_OK");
+    Serial.println("En attente de commande ENROLL:<id>...");
   } else {
-    Serial.println("Capteur NON trouvé - vérifier les connexions");
+    Serial.println("CAPTEUR_ERREUR");
     while (1);
   }
 }
 
 void loop() {
-  Serial.print("\n--- Enrôlement étudiant ID #");
-  Serial.println(id);
-  Serial.println("Pose ton doigt sur le capteur...");
 
+  // Attendre la commande ENROLL:<id> depuis Python/PC
+  if (id == 0) {
+    if (Serial.available()) {
+      String cmd = Serial.readStringUntil('\n');
+      cmd.trim();
+
+      if (cmd.startsWith("ENROLL:")) {
+        id = (uint8_t) cmd.substring(7).toInt();
+
+        if (id == 0) {
+          Serial.println("ERREUR:ID invalide (0 non autorisé)");
+          return;
+        }
+
+        Serial.print("PRET:");
+        Serial.println(id);
+        Serial.println("Pose ton doigt sur le capteur...");
+      }
+    }
+    return; // rien à faire tant qu'on n'a pas reçu l'ID
+  }
+
+  // Lancer l'enrôlement avec l'ID reçu
   if (getFingerprintEnroll()) {
-    Serial.print("Étudiant ID #");
-    Serial.print(id);
-    Serial.println(" enregistré avec succès !");
-    id++; // passer au prochain étudiant
-    Serial.println("Attente 3 secondes avant le prochain...");
-    delay(3000);
+    Serial.print("ENROLLED:");
+    Serial.println(id);
+    id = 0; // reset — prêt pour le prochain étudiant
+    Serial.println("En attente de commande ENROLL:<id>...");
   }
 }
 
 uint8_t getFingerprintEnroll() {
   int p = -1;
 
-  // Première capture
+  // ---- Première capture ----
   while (p != FINGERPRINT_OK) {
     p = finger.getImage();
-    if (p == FINGERPRINT_OK) Serial.println("Image 1 capturée");
+    if (p == FINGERPRINT_OK)       Serial.println("IMAGE1_OK");
     else if (p == FINGERPRINT_NOFINGER) Serial.print(".");
-    else Serial.println("Erreur capture");
+    else { Serial.println("ERREUR:capture 1"); return false; }
   }
 
   p = finger.image2Tz(1);
   if (p != FINGERPRINT_OK) {
-    Serial.println("Erreur traitement image 1");
+    Serial.println("ERREUR:traitement image 1");
     return false;
   }
 
-  Serial.println("Retire le doigt...");
+  Serial.println("RETIRE_DOIGT");
   delay(2000);
   p = 0;
   while (p != FINGERPRINT_NOFINGER) {
     p = finger.getImage();
   }
 
-  // Deuxième capture
-  Serial.println("Pose le même doigt à nouveau...");
+  // ---- Deuxième capture ----
+  Serial.println("POSE_DOIGT_2");
   p = -1;
   while (p != FINGERPRINT_OK) {
     p = finger.getImage();
-    if (p == FINGERPRINT_OK) Serial.println("Image 2 capturée");
+    if (p == FINGERPRINT_OK)       Serial.println("IMAGE2_OK");
     else if (p == FINGERPRINT_NOFINGER) Serial.print(".");
   }
 
   p = finger.image2Tz(2);
   if (p != FINGERPRINT_OK) {
-    Serial.println("Erreur traitement image 2");
+    Serial.println("ERREUR:traitement image 2");
     return false;
   }
 
-  // Créer et sauvegarder le modèle
+  // ---- Créer et sauvegarder le modèle ----
   p = finger.createModel();
   if (p != FINGERPRINT_OK) {
-    Serial.println("Les empreintes ne correspondent pas - recommence");
+    Serial.println("ERREUR:empreintes non identiques - recommence");
+    id = 0;
     return false;
   }
 
   p = finger.storeModel(id);
   if (p != FINGERPRINT_OK) {
-    Serial.println("Erreur sauvegarde");
+    Serial.println("ERREUR:sauvegarde échouée");
     return false;
   }
 
