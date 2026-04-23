@@ -60,3 +60,49 @@ SELECT e.nom, e.prenom, p.statut, p.heure_pointage
 FROM presences p
 JOIN etudiants e ON p.id_etudiant = e.id
 WHERE p.id_seance = 1;
+
+
+
+
+
+-- ajout 2eme classe
+
+
+
+USE gestion_presence;
+
+-- Ajouter une deuxième classe
+INSERT INTO classes (nom) VALUES ('2ème RT');
+
+-- Ajouter une deuxième matière
+INSERT INTO matieres (nom) VALUES ('Réseaux');
+
+-- Ajouter un deuxième enseignant
+INSERT INTO enseignants (cin, nom, prenom, id_matiere) VALUES
+('87654321', 'Trabelsi', 'Sonia', 2);
+
+-- Ajouter des étudiants à la deuxième classe
+INSERT INTO etudiants (empreinte_id, nom, prenom, id_classe) VALUES
+('3', 'Jlassi', 'Omar', 2),
+('4', 'Khalil', 'Nour', 2);
+
+
+
+
+
+--recherche complet 
+
+
+
+-- Voir toutes les classes
+SELECT * FROM classes;
+
+-- Voir tous les enseignants avec leurs matières
+SELECT e.nom, e.prenom, m.nom as matiere
+FROM enseignants e
+JOIN matieres m ON e.id_matiere = m.id;
+
+-- Voir tous les étudiants avec leurs classes
+SELECT e.nom, e.prenom, c.nom as classe
+FROM etudiants e
+JOIN classes c ON e.id_classe = c.id;
